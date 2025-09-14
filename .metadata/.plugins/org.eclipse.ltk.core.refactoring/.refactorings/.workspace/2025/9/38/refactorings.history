@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;Bootloader_STM32L4xx&apos; to &apos;Bootloader_STM32L496xx&apos;" description="Rename resource &apos;Bootloader_STM32L4xx&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/Bootloader_STM32L4xx" name="Bootloader_STM32L496xx" stamp="1757840434242" updateReferences="true"/>
+</session>
