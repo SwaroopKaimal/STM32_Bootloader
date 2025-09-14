@@ -37,6 +37,8 @@
 #define D_UART &hlpuart1 /* Debug UART*/
 #define C_UART &huart2 /* Virtual Communication UART - For BL Commands*/
 
+#define FLASH_APP_CODE_BASEADDR 0x8008000 /* Location of user code in FLASH */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,8 +53,6 @@ UART_HandleTypeDef hlpuart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t data1[]="Hello World!\n";
-uint8_t data2[]="ST-Link!\n";
 
 /* USER CODE END PV */
 
@@ -65,7 +65,6 @@ static void MX_LPUART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* Custom function to print formatted string*/
-static void printmsg(char *format,...);
 
 /* USER CODE END PFP */
 
@@ -108,11 +107,19 @@ int main(void)
   MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  //HAL_UART_Transmit(&huart2, (uint8_t*)&data1, sizeof(data1), HAL_MAX_DELAY); /*For boot loader */
-  //HAL_UART_Transmit(&hlpuart1, (uint8_t*)&data2, sizeof(data2), HAL_MAX_DELAY);  /*For debug purposes, boot loader does not support LPUART - AN2606 */
+    /* Check whether button is pressed or not, if not pressed jump to user application */
+  if ( HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) == GPIO_PIN_SET ) { /*On Nucleo-boards pressing implies making it low*/
+	  printmsg("BL_DEBUG_MSG:Button is pressed.. going to BL mode\n\r");
 
-  printmsg("%s", data2);
+	  //we should continue in boot loader mode
+	  bootloader_uart_read_data();
+  } else {
+	  printmsg("BL_DEBUG_MSG:Button is not pressed.. executing user application\n\r");
 
+	  //jump to user application
+	  bootloader_jump_to_user_app();
+
+  }
 
   /* USER CODE END 2 */
 
@@ -344,7 +351,9 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-/*Prints formatted string to console over UART*/
+/*Prints formatted string to console over UART
+ * HAL_UART_Transmit() only sends raw bytes
+ * If we want to print variables (integers, floats, hex values, etc.), we need to format them */
 void printmsg(char *format,...)
 {
 #ifdef BL_DEBUG_MSG_EN
@@ -359,6 +368,43 @@ void printmsg(char *format,...)
 #endif
 }
 
+
+void bootloader_jump_to_user_app(void)
+{
+	// A 'function pointer' to hold the address of the reset handler of the user application
+	void (*app_reset_handler) (void); /*Used in Step 2 */
+
+	printmsg("BL_DEBUG_MSG:bootloader_jump_to_user_app\n");
+
+	/*The first byte at address of the FLASH area holds the value of MSP and next byte holds the Reset Handler
+	 * according to ARM-Cortex Architecture */
+
+	/*1. Configure the Main Stack Pointer (MSP) by reading the value form the flash base address of desired sector*/
+	uint32_t msp_value = *(volatile uint32_t*)FLASH_APP_CODE_BASEADDR;
+
+	/* Set MSP function form CMSIS*/
+	__set_MSP(msp_value);
+
+	SCB->VTOR = FLASH_APP_CODE_BASEADDR;
+
+	/* 2. Now fetch the reset handler address of the user application
+	 * from the location FLASH_SECTOR2_BASE_ADDRESS + 4*/
+
+	uint32_t resethandler_address = *(volatile uint32_t *) (FLASH_APP_CODE_BASEADDR + 4);
+
+	app_reset_handler = (void*) resethandler_address; /*Initializing function pointer with reset handler*/
+
+	printmsg("BL_DEBUG_MSG: Application reset handler address : %#x\n",app_reset_handler);
+
+	/*3. Jumping to the reset handler of user application - Now this address will be loaded into the Program Counter*/
+	app_reset_handler();
+
+}
+
+void bootloader_uart_read_data(void)
+{
+
+}
 /* USER CODE END 4 */
 
 /**

@@ -53,6 +53,10 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+static void printmsg(char *format,...);
+
+void bootloader_uart_read_data(void);
+void bootloader_jump_to_user_app(void);
 
 /* USER CODE END EFP */
 
