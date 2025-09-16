@@ -1,17 +1,10 @@
-21:07:34 **** Incremental Build of configuration Debug for project User_App_STM32L496xx ****
+18:59:44 **** Incremental Build of configuration Debug for project User_App_STM32L496xx ****
 make -j16 all 
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32L496xx -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
-arm-none-eabi-gcc -o "User_App_STM32L496xx.elf" @"objects.list"   -mcpu=cortex-m4 -T"D:\EmbeddedSystems\Workspace_Bootloader\User_App_STM32L496xx\STM32L496ZGTXP_FLASH.ld" --specs=nosys.specs -Wl,-Map="User_App_STM32L496xx.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-Finished building target: User_App_STM32L496xx.elf
- 
 arm-none-eabi-size  User_App_STM32L496xx.elf 
-arm-none-eabi-objdump -h -S User_App_STM32L496xx.elf  > "User_App_STM32L496xx.list"
    text	   data	    bss	    dec	    hex	filename
   13480	     32	   1840	  15352	   3bf8	User_App_STM32L496xx.elf
 Finished building: default.size.stdout
  
-Finished building: User_App_STM32L496xx.list
- 
 
-21:07:36 Build Finished. 0 errors, 0 warnings. (took 1s.356ms)
+18:59:45 Build Finished. 0 errors, 0 warnings. (took 386ms)
 
