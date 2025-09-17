@@ -560,23 +560,128 @@ void bootloader_handle_getcid_cmd(uint8_t *pBuffer)
 
 }
 
-void bootloader_handle_getrdp_cmd(uint8_t *pBuffer)
-{
+void bootloader_handle_getrdp_cmd(uint8_t *pBuffer) {
+  uint8_t rdp_level = 0x00;
+  printmsg("BL_DEBUG_MSG:bootloader_handle_getrdp_cmd\n");
 
+  //Total length of the command packet
+  uint32_t command_packet_len = bl_rx_buffer[0]+1 ;
+
+  //extract the CRC32 sent by the Host
+  uint32_t host_crc = *((uint32_t * ) (bl_rx_buffer+command_packet_len - 4) ) ;
+
+  if (! bootloader_verify_crc(&bl_rx_buffer[0],command_packet_len-4,host_crc)) {
+    printmsg("BL_DEBUG_MSG:checksum success !!\n");
+    bootloader_send_ack(pBuffer[0],1);
+    rdp_level = get_flash_rdp_level();
+    printmsg("BL_DEBUG_MSG:RDP level: %d %#x\n",rdp_level,rdp_level);
+    bootloader_uart_write_data(&rdp_level,1);
+
+  } else {
+    printmsg("BL_DEBUG_MSG:checksum fail !!\n");
+    bootloader_send_nack();
+  }
 }
 
-void bootloader_handle_go_cmd(uint8_t *pBuffer)
-{
 
+void bootloader_handle_go_cmd(uint8_t *pBuffer) {
+
+  uint32_t go_address=0;
+  uint8_t addr_valid = ADDR_VALID;
+  uint8_t addr_invalid = ADDR_INVALID;
+
+  printmsg("BL_DEBUG_MSG:bootloader_handle_go_cmd\n");
+
+  //Total length of the command packet
+  uint32_t command_packet_len = bl_rx_buffer[0]+1 ;
+
+  //extract the CRC32 sent by the Host
+  uint32_t host_crc = *((uint32_t * ) (bl_rx_buffer+command_packet_len - 4) ) ;
+
+  if (! bootloader_verify_crc(&bl_rx_buffer[0],command_packet_len-4,host_crc)) {
+
+    printmsg("BL_DEBUG_MSG:checksum success !!\n");
+
+    bootloader_send_ack(pBuffer[0],1);
+
+    //extract the go address
+    go_address = *((uint32_t *)&pBuffer[2] ); /*Retrieve 4 bytes of Address Data*/
+    printmsg("BL_DEBUG_MSG:GO addr: %#x\n",go_address);
+
+  if( verify_address(go_address) == ADDR_VALID ) {
+    //tell host that address is fine
+    bootloader_uart_write_data(&addr_valid,1);
+
+    /*jump to "go" address. Boot loader does not know what code is present at that address*/
+
+    /* Not doing the below line will result in hard fault exception for ARM Cortex-M */
+    //watch : https://www.youtube.com/watch?v=VX_12SjnNhY
+
+    go_address+=1; //make Thumb bit T =1
+
+    void (*lets_jump)(void) = (void *)go_address;
+
+    printmsg("BL_DEBUG_MSG: jumping to go address! \n");
+
+    lets_jump();
+
+  } else {
+
+    printmsg("BL_DEBUG_MSG:GO addr invalid ! \n");
+    //tell host that address is invalid
+    bootloader_uart_write_data(&addr_invalid,1);
+  }
+
+  } else {
+    printmsg("BL_DEBUG_MSG:checksum fail !!\n");
+    bootloader_send_nack();
+
+  }
+
+  /*
+   * NOTE:
+   * While jumping to a user code with the BL_GO_TO_ADDR command, enter the second byte at at the address (which is the reset handler)
+   * and do minus 1. This is because the last bit accounts for T bit in ARM processors in Thumb Mode. For example: if address of reset
+   * handler found is 0x08008A59, enter 0x08008A58 in the boot loader host application.
+   */
 }
 
-void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer)
-{
+void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer) {
 
+  uint8_t erase_status = 0x00;
+  printmsg("BL_DEBUG_MSG:bootloader_handle_flash_erase_cmd\n");
+
+  //Total length of the command packet
+  uint32_t command_packet_len = bl_rx_buffer[0]+1 ;
+
+  //extract the CRC32 sent by the Host
+  uint32_t host_crc = *((uint32_t * ) (bl_rx_buffer+command_packet_len - 4) ) ;
+
+  if (! bootloader_verify_crc(&bl_rx_buffer[0],command_packet_len-4,host_crc)) {
+
+    printmsg("BL_DEBUG_MSG:checksum success !!\n");
+    bootloader_send_ack(pBuffer[0],1);
+    printmsg("BL_DEBUG_MSG:initial_sector : %d  no_ofsectors: %d\n",pBuffer[2],pBuffer[3]);
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14,1);
+    erase_status = execute_flash_erase(pBuffer[2] , pBuffer[3]);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14,0);
+
+    printmsg("BL_DEBUG_MSG: flash erase status: %#x\n",erase_status);
+
+    bootloader_uart_write_data(&erase_status,1);
+
+  } else {
+
+    printmsg("BL_DEBUG_MSG:checksum fail !!\n");
+    bootloader_send_nack();
+  }
 }
 
 void bootloader_handle_mem_write_cmd(uint8_t *pBuffer)
 {
+
+
 
 }
 
@@ -667,6 +772,90 @@ uint16_t get_mcu_chip_id(void)
 
 }
 
+uint8_t get_flash_rdp_level(void)
+{
+	/* !!! VERY IMPORTANT !!!! */
+	/*
+	 * LEVEL 2 (No debug mode): Option bytes cannot be programmed nor erased. Thus, the level 2 cannot be removed at all:
+	 * it is an IRREVERSIBLE operation. 'DO NOT USE' Level 2, it is for end user products.
+	 *
+	 * When decreased from 'Level 1 to Level 0', the FLASH goes into MASS ERASE.
+	 *
+	 * */
+	/*HAL Implementation*/
+#if 0
+	FLASH_OBProgramInitTypeDef  ob_handle;
+	HAL_FLASHEx_OBGetConfig(&ob_handle);
+	rdp_status = (uint8_t)ob_handle.RDPLevel;
+#else
+
+	uint8_t rdp_status = 0;
+
+	volatile uint32_t *pOB_addr = (uint32_t*) 0x1FFF7800; /* Address of User and read protection option bytes register*/
+	rdp_status = (uint8_t)(*pOB_addr); /*The the first byte from LSB of the register for RDP*/
+
+	return rdp_status;
+#endif
+}
+
+uint8_t verify_address(uint32_t go_address)
+{
+	/*Jump to FLASH, System Memory, SRAM1, SRAM2, Backup SRAM allowed,
+	 * others such as peripheral memory not allowed*/
+
+	if ( go_address >= SRAM1_BASE && go_address <= SRAM1_END) {
+
+		return ADDR_VALID;
+	} else if ( go_address >= SRAM2_BASE && go_address <= SRAM2_END) {
+
+		return ADDR_VALID;
+	} else if ( go_address >= FLASH_BASE && go_address <= FLASH_END) {
+
+		return ADDR_VALID;
+	}else
+	return ADDR_INVALID;
+}
+
+
+uint8_t execute_flash_erase(uint8_t page_number , uint8_t number_of_pages) {
+
+  /*Refer HAL FLASH EX codes for FLASH erase commands*/
+
+  FLASH_EraseInitTypeDef flashErase_handle;
+  uint32_t sectorError;
+  HAL_StatusTypeDef status;
+
+
+  if( number_of_pages > 511 )
+    return INVALID_SECTOR;
+
+  if( (page_number == 0xff ) || (page_number <= 511) ) {
+    if(page_number == (uint8_t) 0xff) {
+    flashErase_handle.TypeErase = FLASH_TYPEERASE_MASSERASE;
+
+    } else {
+      /*Here we are just calculating how many sectors needs to erased */
+      uint8_t remanining_page = 511 - page_number;
+      if( number_of_pages > remanining_page) {
+
+    	  number_of_pages = remanining_page;
+      }
+      flashErase_handle.TypeErase = FLASH_TYPEERASE_PAGES; /*Macro from HAL*/
+      flashErase_handle.Page = page_number; // This is the initial page
+      flashErase_handle.NbPages = number_of_pages;
+    }
+    flashErase_handle.Banks = FLASH_BANK_1;
+
+    /*Get access to the flash registers, unlock them first */
+    HAL_FLASH_Unlock();
+    status = (uint8_t) HAL_FLASHEx_Erase(&flashErase_handle, &sectorError);
+    HAL_FLASH_Lock();
+
+    return status;
+  }
+
+  return INVALID_SECTOR;
+}
 
 /* USER CODE END 4 */
 

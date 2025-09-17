@@ -1,9 +1,9 @@
 Reset sequences of a Microcontroller: Discussion
 =======================================================================================
 
-1) When you reset the MCU , The PC of the processor is loaded with the value 0x0000_0000
+1) When you reset the MCU , The PC(Program Counter) of the processor is loaded with the value 0x0000_0000
 
-2) Then processor reads the value @ memory location 0x0000_0000 in to MSP
+2) Then processor reads the value @ memory location 0x0000_0000 in to MSP(Main Stack Pointer)
 
 MSP = value@0x0000_0000
 MSP is a Main Stack pointer register

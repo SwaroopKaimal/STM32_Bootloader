@@ -67,11 +67,11 @@ void bootloader_handle_gethelp_cmd(uint8_t *pBuffer);
 void bootloader_handle_getcid_cmd(uint8_t *pBuffer);
 void bootloader_handle_getrdp_cmd(uint8_t *pBuffer);
 void bootloader_handle_go_cmd(uint8_t *pBuffer);
-void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer);
+uint8_t execute_flash_erase(uint8_t page_number , uint8_t number_of_pages);
 void bootloader_handle_mem_write_cmd(uint8_t *pBuffer);
 void bootloader_handle_en_rw_protect(uint8_t *pBuffer);
 void bootloader_handle_mem_read (uint8_t *pBuffer);
-void bootloader_handle_read_sector_protection_status(uint8_t *pBuffer);
+void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer);
 void bootloader_handle_read_otp(uint8_t *pBuffer);
 void bootloader_handle_dis_rw_protect(uint8_t *pBuffer);
 
@@ -83,6 +83,11 @@ uint8_t get_bootloader_version(void);
 void bootloader_uart_write_data(uint8_t *pBuffer,uint32_t len);
 
 uint16_t get_mcu_chip_id(void);
+uint8_t get_flash_rdp_level(void);
+
+uint8_t verify_address(uint32_t go_address);
+
+void bootloader_handle_read_sector_protection_status(uint8_t *pBuffer);
 
 /* USER CODE END EFP */
 
@@ -175,17 +180,24 @@ uint16_t get_mcu_chip_id(void);
 
 
 /* ACK and NACK bytes*/
-#define BL_ACK   0XA5
-#define BL_NACK  0X7F
+#define BL_ACK   				0XA5
+#define BL_NACK 				0X7F
 
 /*CRC*/
-#define VERIFY_CRC_FAIL    1
-#define VERIFY_CRC_SUCCESS 0
+#define VERIFY_CRC_FAIL    		1
+#define VERIFY_CRC_SUCCESS 		0
 
-#define ADDR_VALID 0x00
-#define ADDR_INVALID 0x01
+#define ADDR_VALID 				0x00
+#define ADDR_INVALID 			0x01
 
-#define INVALID_SECTOR 0x04
+#define INVALID_SECTOR 			0x04
+
+
+#define SRAM1_SIZE            256*1024
+#define SRAM1_END             (SRAM1_BASE + SRAM1_SIZE)
+#define SRAM2_END             (SRAM2_BASE + SRAM2_SIZE)
+
+
 
 
 

@@ -1,10 +1,10 @@
-18:59:44 **** Incremental Build of configuration Debug for project User_App_STM32L496xx ****
+17:12:45 **** Incremental Build of configuration Debug for project User_App_STM32L496xx ****
 make -j16 all 
 arm-none-eabi-size  User_App_STM32L496xx.elf 
    text	   data	    bss	    dec	    hex	filename
-  13480	     32	   1840	  15352	   3bf8	User_App_STM32L496xx.elf
+  13544	     32	   1840	  15416	   3c38	User_App_STM32L496xx.elf
 Finished building: default.size.stdout
  
 
-18:59:45 Build Finished. 0 errors, 0 warnings. (took 386ms)
+17:12:45 Build Finished. 0 errors, 0 warnings. (took 376ms)
 
