@@ -69,11 +69,11 @@ void bootloader_handle_getrdp_cmd(uint8_t *pBuffer);
 void bootloader_handle_go_cmd(uint8_t *pBuffer);
 uint8_t execute_flash_erase(uint8_t page_number , uint8_t number_of_pages);
 void bootloader_handle_mem_write_cmd(uint8_t *pBuffer);
-void bootloader_handle_en_rw_protect(uint8_t *pBuffer);
-void bootloader_handle_mem_read (uint8_t *pBuffer);
 void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer);
-void bootloader_handle_read_otp(uint8_t *pBuffer);
-void bootloader_handle_dis_rw_protect(uint8_t *pBuffer);
+//void bootloader_handle_mem_read (uint8_t *pBuffer);
+//void bootloader_handle_read_otp(uint8_t *pBuffer);
+//void bootloader_handle_en_rw_protect(uint8_t *pBuffer);
+//void bootloader_handle_dis_rw_protect(uint8_t *pBuffer);
 
 void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
 void bootloader_send_nack(void);
@@ -87,7 +87,9 @@ uint8_t get_flash_rdp_level(void);
 
 uint8_t verify_address(uint32_t go_address);
 
-void bootloader_handle_read_sector_protection_status(uint8_t *pBuffer);
+//void bootloader_handle_read_sector_protection_status(uint8_t *pBuffer);
+
+uint8_t execute_mem_write(uint8_t *pBuffer, uint32_t mem_address, uint32_t len);
 
 /* USER CODE END EFP */
 

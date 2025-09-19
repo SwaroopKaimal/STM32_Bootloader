@@ -52,6 +52,9 @@ default.size.stdout \
 OBJDUMP_LIST += \
 User_App_STM32L496xx.list \
 
+OBJCOPY_BIN += \
+User_App_STM32L496xx.bin \
+
 
 # All Target
 all: main-build
@@ -75,12 +78,17 @@ User_App_STM32L496xx.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_
 	@echo 'Finished building: $@'
 	@echo ' '
 
+User_App_STM32L496xx.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "User_App_STM32L496xx.bin"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) User_App_STM32L496xx.elf User_App_STM32L496xx.list User_App_STM32L496xx.map default.size.stdout
+	-$(RM) User_App_STM32L496xx.bin User_App_STM32L496xx.elf User_App_STM32L496xx.list User_App_STM32L496xx.map default.size.stdout
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'

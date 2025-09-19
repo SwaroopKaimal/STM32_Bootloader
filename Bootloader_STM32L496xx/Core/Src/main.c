@@ -461,16 +461,16 @@ void bootloader_uart_read_data(void)
 			bootloader_handle_en_rw_protect(bl_rx_buffer);
 			break;
 		case BL_MEM_READ:
-			bootloader_handle_mem_read(bl_rx_buffer);
+			//bootloader_handle_mem_read(bl_rx_buffer);
 			break;
 		case BL_READ_SECTOR_P_STATUS:
-			bootloader_handle_read_sector_protection_status(bl_rx_buffer);
+			//bootloader_handle_read_sector_protection_status(bl_rx_buffer);
 			break;
 		case BL_OTP_READ:
-			bootloader_handle_read_otp(bl_rx_buffer);
+			//bootloader_handle_read_otp(bl_rx_buffer);
 			break;
 		case BL_DIS_R_W_PROTECT:
-			bootloader_handle_dis_rw_protect(bl_rx_buffer);
+			//bootloader_handle_dis_rw_protect(bl_rx_buffer);
 			break;
 		default:
 			printmsg("BL_DEBUG_MSG:Invalid command code received from host \n");
@@ -678,37 +678,67 @@ void bootloader_handle_flash_erase_cmd(uint8_t *pBuffer) {
   }
 }
 
-void bootloader_handle_mem_write_cmd(uint8_t *pBuffer)
-{
+void bootloader_handle_mem_write_cmd(uint8_t *pBuffer) {
+
+  //uint8_t addr_valid = ADDR_VALID;
+  uint8_t write_status = 0x00;
+  //uint8_t chksum =0, len=0;
+  //len = pBuffer[0];
+  uint8_t payload_len = pBuffer[6];
+
+  uint32_t mem_address = *((uint32_t *) ( &pBuffer[2]) );
+
+  //chksum = pBuffer[len];
+
+  printmsg("BL_DEBUG_MSG:bootloader_handle_mem_write_cmd\n");
+
+  //Total length of the command packet
+  uint32_t command_packet_len = bl_rx_buffer[0] + 1 ;
+
+  //extract the CRC32 sent by the Host
+  uint32_t host_crc = *((uint32_t * ) (bl_rx_buffer + command_packet_len - 4) ) ;
 
 
+  if (! bootloader_verify_crc(&bl_rx_buffer[0],command_packet_len-4,host_crc)) {
 
+    printmsg("BL_DEBUG_MSG:checksum success !!\n");
+
+    bootloader_send_ack(pBuffer[0],1);
+
+    printmsg("BL_DEBUG_MSG: mem write address : %#x\n",mem_address);
+
+  if( verify_address(mem_address) == ADDR_VALID ) {
+
+
+    printmsg("BL_DEBUG_MSG: valid mem write address\n");
+
+    //glow the led to indicate bootloader is currently writing to memory
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14,1);
+
+        //execute mem write
+    write_status = execute_mem_write(&pBuffer[7],mem_address, payload_len);
+
+    //turn off the led to indicate memory write is over
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14,0);
+
+    //inform host about the status
+    bootloader_uart_write_data(&write_status,1);
+
+  } else {
+
+    printmsg("BL_DEBUG_MSG: invalid mem write address\n");
+    write_status = ADDR_INVALID;
+    //inform host that address is invalid
+    bootloader_uart_write_data(&write_status,1);
+  }
+
+
+  } else {
+    printmsg("BL_DEBUG_MSG:checksum fail !!\n");
+    bootloader_send_nack();
+  }
 }
 
-void bootloader_handle_en_rw_protect(uint8_t *pBuffer)
-{
-
-}
-
-void bootloader_handle_mem_read(uint8_t *pBuffer)
-{
-
-}
-
-void bootloader_handle_read_sector_protection_status(uint8_t *pBuffer)
-{
-
-}
-
-void bootloader_handle_read_otp(uint8_t *pBuffer)
-{
-
-}
-
-void bootloader_handle_dis_rw_protect(uint8_t *pBuffer)
-{
-
-}
 
 void bootloader_send_nack(void)
 {
@@ -855,6 +885,38 @@ uint8_t execute_flash_erase(uint8_t page_number , uint8_t number_of_pages) {
   }
 
   return INVALID_SECTOR;
+}
+
+uint8_t execute_mem_write(uint8_t *pBuffer, uint32_t mem_address, uint32_t len)
+{
+	/* Below code is for FLASH_TYPEPROGRAM_DOUBLEWORD logic - host application sends single word */
+
+    HAL_StatusTypeDef status = HAL_OK;
+
+    if ((mem_address & 0x7U) != 0U) return (uint8_t)HAL_ERROR; /* must be 8-byte aligned */
+    if (len == 0U) return (uint8_t)HAL_OK;
+
+    HAL_FLASH_Unlock();
+
+    for (uint32_t offset = 0; offset < len; offset += 8U) {
+        uint64_t data64 = 0ULL;
+        uint32_t chunk = ((len - offset) >= 8U) ? 8U : (len - offset);
+
+        /* pack available bytes (little-endian) */
+        for (uint32_t b = 0U; b < chunk; ++b) {
+            data64 |= ((uint64_t)pBuffer[offset + b]) << (8U * b);
+        }
+        /* pad remaining bytes with 0xFF if needed */
+        for (uint32_t b = chunk; b < 8U; ++b) {
+            data64 |= ((uint64_t)0xFFU) << (8U * b);
+        }
+
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, mem_address + offset, data64);
+        if (status != HAL_OK) break;
+    }
+
+    HAL_FLASH_Lock();
+    return (uint8_t)status; /* 0 = HAL_OK */
 }
 
 /* USER CODE END 4 */
